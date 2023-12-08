@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+
 using iText.IO.Font;
 using iText.IO.Image;
 using iText.Kernel.Colors;
@@ -265,7 +266,7 @@ namespace _231013
             {
                 this.chart2.Series["stocks"].Points.AddXY(OneItem.Key, OneItem.Value);
             }
-
+            Show_Statistic();
         }
 
         private void button4_Click(object sender, EventArgs e)
@@ -452,6 +453,7 @@ namespace _231013
             if (save.ShowDialog() != DialogResult.OK) return;
 
             manipulatePdf(save.FileName);
+
         }
         //Bitmap to Byte array (圖片轉成2D陣列)
         public byte[] BmpToBytes(Bitmap bmp)
@@ -463,16 +465,14 @@ namespace _231013
         }
 
         // 繪製PDF
-        void manipulatePdf(String src)
+        void manipulatePdf(String dst)
         {
-
-            String src_tmp = src + "_tmp.pdf";
-            src = src + ".pdf";
-
             // 1. create pdf
-            PdfWriter writer = new PdfWriter(src_tmp);
-            PdfDocument pdf = new PdfDocument(writer);
-            Document document = new Document(pdf, PageSize.A4.Rotate());
+
+            MemoryStream memoryStream = new MemoryStream();
+            PdfWriter writer = new PdfWriter(memoryStream);
+            PdfDocument pdfDocument = new PdfDocument(writer.SetSmartMode(true));
+            Document document = new Document(pdfDocument, PageSize.A4, false);
             document.SetMargins(40, 40, 40, 40);
             PdfFont font = PdfFontFactory.CreateFont(@"c:/Windows/fonts/kaiu.ttf", PdfEncodings.IDENTITY_H);
 
@@ -602,21 +602,11 @@ namespace _231013
             table.Complete();
 
             // 3. close pdf
-
+            draw_header(pdfDocument, document);
             document.Close();
+            byte[] byte1 = memoryStream.ToArray();
+            using (FileStream fs = File.Create(dst)) { fs.Write(byte1, 0, (int)byte1.Length); }
 
-
-            // 4. edit existed pdf
-            PdfReader reader2 = new PdfReader(src_tmp);
-            PdfWriter writer2 = new PdfWriter(src);
-            PdfDocument pdfDoc2 = new PdfDocument(reader2, writer2);
-            Document document2 = new Document(pdfDoc2);
-
-            // 5. add Page numbers
-            draw_header(pdfDoc2, document2);
-            document2.Close();
-            File.Delete(src_tmp);
-           
         }
         // 畫pdf的頁碼
         void draw_simple_page_num(PdfDocument pdfDoc, Document document)
@@ -726,7 +716,6 @@ namespace _231013
             return bitmap;
         }
 
-
         private void Show_Statistic()
         {
             // 1. 進貨統計
@@ -758,9 +747,12 @@ namespace _231013
             string _log = "出貨統計\n\n" + statistic(stock_out);
             richTextBox2.Text = _log;
 
+
             System.Drawing.Bitmap qr_code = get_qrcode(richTextBox2.Text, pictureBox2.Width, pictureBox2.Height);
             pictureBox2.Image = qr_code;
         }
+
+
         public string statistic(List<double> data)
         {
             double mean = Statistics.Mean(data);
@@ -786,6 +778,5 @@ namespace _231013
             return _log;
         }
 
-        
     }
 }
